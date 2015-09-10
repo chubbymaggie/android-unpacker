@@ -1,7 +1,7 @@
 /*
  * Unpacker for various Android packers/protectors
  *
- * Tim 'diff' Strazzere <diff@lookout.com>
+ * Tim 'diff' Strazzere <strazz@gmail.com>
  *"
  * For education use only - find them malwares
  *
@@ -24,6 +24,7 @@
  */
 
 #include "kisskiss.h"
+#include "definitions.h"
 
 int main(int argc, char *argv[]) {
 
@@ -180,16 +181,13 @@ char *determine_filter(uint32_t clone_pid, int memory_fd) {
   // Scan the /proc/pid/maps file and currently hardcoded shared lib names
   char mem_line[1024];
   while(fscanf(maps_file, "%[^\n]\n", mem_line) >= 0) {
-    // Currently it's "libAPKProtect.so" which is directly mapped to memory
-    if(strstr(mem_line, apkprotect_marker)) {
-      printf("  [*] Found APKProtect!\n");
-      return apkprotect_filter;
-    } else if(strstr(mem_line, liapp_marker)) {
-      printf("  [*] Found an Egg (LIAPP)!\n");
-      return liapp_egg_filter;
-    } else if(strstr(mem_line, qihoo_monster_marker)) {
-      printf("  [*] Found a Monster (Qihoo)!\n");
-      return qihoo_monster_filter;
+    // Iterate through all markers to find proper filter
+    int i;
+    for(i = 0; i < sizeof(packers) / sizeof(packers[0]); i++) {
+      if(strstr(mem_line, packers[i].marker)) {
+	printf("  [*] Found %s\n", packers[i].name);
+	return packers[i].filter;
+      }
     }
   }
   printf("  [*] Nothing special found, assuming Bangcle...\n");
@@ -227,7 +225,7 @@ int find_magic_memory(uint32_t clone_pid, int memory_fd, memory_region *memory, 
 
     char mem_address_start[10];
     char mem_address_end[10];
-    sscanf(mem_line, "%8[^-]-%8[^ ]", mem_address_start, mem_address_end, mem_line);
+    sscanf(mem_line, "%8[^-]-%8[^ ]", mem_address_start, mem_address_end);
 
     uint32_t mem_start = strtoul(mem_address_start, NULL, 16);
     // Peek and see if the memory is what we wanted
